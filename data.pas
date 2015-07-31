@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, usnap7;
+  Dialogs, StdCtrls, usnap7, Buttons, ExtCtrls;
 
 const
   strChangeDataProperties = 'Изменить сведения о блоке данных?';
@@ -21,12 +21,13 @@ type
     Edit5: TEdit;
     Label5: TLabel;
     Label6: TLabel;
-    Button1: TButton;
-    Button2: TButton;
     ComboBox1: TComboBox;
     ComboBox2: TComboBox;
-    procedure Button2Click(Sender: TObject);
-    procedure Button1Click(Sender: TObject);
+    SpeedButton1: TSpeedButton;
+    SpeedButton2: TSpeedButton;
+    Image1: TImage;
+    procedure SpeedButton1Click(Sender: TObject);
+    procedure SpeedButton2Click(Sender: TObject);
   private
     { Private declarations }
   public
@@ -42,7 +43,7 @@ implementation
 
 {$R *.dfm}
 
-procedure TDataForm.Button1Click(Sender: TObject);
+procedure TDataForm.SpeedButton1Click(Sender: TObject);
 begin
   if MessageDlg(strChangeDataProperties, mtConfirmation, [mbyes, mbno], 0) = mryes then begin
     Data.Name := Edit1.Text;
@@ -55,7 +56,7 @@ begin
   Close;
 end;
 
-procedure TDataForm.Button2Click(Sender: TObject);
+procedure TDataForm.SpeedButton2Click(Sender: TObject);
 begin
   Close;
 end;

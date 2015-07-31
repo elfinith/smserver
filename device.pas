@@ -4,15 +4,13 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, Buttons, usnap7;
+  Dialogs, StdCtrls, Buttons, usnap7, ExtCtrls;
 
 const
   strChangeDeviceProperties = 'Изменить данные об устройстве?';
 
 type
   TDeviceForm = class(TForm)
-    BitBtn1: TBitBtn;
-    BitBtn2: TBitBtn;
     Label1: TLabel;
     Edit1: TEdit;
     Edit2: TEdit;
@@ -21,8 +19,11 @@ type
     Label2: TLabel;
     Label3: TLabel;
     Label4: TLabel;
-    procedure BitBtn2Click(Sender: TObject);
-    procedure BitBtn1Click(Sender: TObject);
+    SpeedButton1: TSpeedButton;
+    SpeedButton2: TSpeedButton;
+    Image1: TImage;
+    procedure SpeedButton1Click(Sender: TObject);
+    procedure SpeedButton2Click(Sender: TObject);
   private
     { Private declarations }
   public
@@ -33,7 +34,7 @@ implementation
 
 {$R *.dfm}
 
-procedure TDeviceForm.BitBtn1Click(Sender: TObject);
+procedure TDeviceForm.SpeedButton1Click(Sender: TObject);
 begin
   if MessageDlg(strChangeDeviceProperties, mtConfirmation, [mbyes, mbno], 0) = mryes then begin
     Device.Name := Edit1.Text;
@@ -44,7 +45,7 @@ begin
   Close;
 end;
 
-procedure TDeviceForm.BitBtn2Click(Sender: TObject);
+procedure TDeviceForm.SpeedButton2Click(Sender: TObject);
 begin
   Close;
 end;

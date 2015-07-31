@@ -51,6 +51,7 @@ type
   public
     property EnumDeviceIDs : TStringList read GetDeviceIDs;
     function AddDevice(strName : string; strAddr : string; iRack : integer; iSlot : integer) : integer;
+    procedure DeleteDevice(DEV_ID : integer);
     constructor Create;
     destructor Destroy;
   end;
@@ -87,6 +88,7 @@ type
     property isConnected : boolean read fConnected;
     function Connect : boolean;
     function AddData(strName : string; iAreaId, iDBNum, iDataStart, iDataAmount, iWLenId : integer) : integer;
+    procedure DelData(DM_ID : integer);
   end;
 
   TSnap7Data = class(TObject)
@@ -258,6 +260,12 @@ begin
   AddDevice := newID;
 end;
 
+procedure TSnap7WorkArea.DeleteDevice(DEV_ID : integer);
+begin
+  UpdateQuery('delete from data_map where dev_id=' + IntToStr(DEV_ID) + ';');
+  UpdateQuery('delete from device where dev_id=' + IntToStr(DEV_ID) + ';');
+end;
+
 constructor TSnap7WorkArea.Create;
 begin
   inherited Create;
@@ -348,8 +356,7 @@ function TSnap7Device.AddData(strName : string; iAreaId, iDBNum, iDataStart,
 var
   newID : integer;
 begin
-  with TSelectQuery.Create('select max(dm_id) from data_map where dev_id='
-  + IntToStr(fId) + ';') do try
+  with TSelectQuery.Create('select max(dm_id) from data_map') do try
     newID := Data.Fields[0].AsInteger + 1;
   finally
     Destroy;
@@ -360,6 +367,11 @@ begin
     + ',' + IntToStr(iDataAmount) + ',' + IntToStr(iWLenId) + ');');
   slEnumDataIDs.Add(IntToStr(newID));
   AddData := newID;
+end;
+
+procedure TSnap7Device.DelData(DM_ID : integer);
+begin
+  UpdateQuery('delete from data_map where dm_id=' + IntToStr(DM_ID) + ';');
 end;
 
 constructor TSnap7Device.Create(DEV_ID: integer);
