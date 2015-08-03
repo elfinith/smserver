@@ -3,10 +3,10 @@ unit uSnap7;
 interface
 
 uses
-  IBDatabase, IBQuery, IBSQL, SysUtils, Classes, Dialogs, Snap7, DB, RyTimer, DBTables;
+  IBDatabase, IBQuery, IBSQL, SysUtils, Classes, Dialogs, Snap7, DB, RyTimer, DBTables, IniFiles;
 
 const
-  strDatabaseName = 'D:\WORK\Projects\Delphi\snap7\database\dbase.fdb';
+  strConfigFileName = '.\config.ini';
   arrDBConnParams : array[0..2] of string = (
     'user_name=sysdba', 'PASSWORD=masterkey', 'lc_ctype=win1251'
   );
@@ -75,6 +75,7 @@ type
     function GetSlot : integer;
     procedure SetSlot(NewSlot : integer);
     function GetDataIDs : TStringList;
+    procedure DoCleanup;
   public
     ClientConnection : TS7Client;
     constructor Create(DEV_ID: integer);
@@ -103,6 +104,7 @@ type
     fBuffer : TDataBuffer; // 4 K buffer
     fAsync : boolean;
     fLastError: integer;
+    fHaveStoredTimer : boolean;
     function GetId : integer;
     function GetName : string;
     procedure SetName(strName : string);
@@ -121,6 +123,7 @@ type
     function GetAsync : boolean;
     procedure SetAsync(bAsync : boolean);
     procedure SetFLastError(const Value: integer);
+    procedure DoCleanup;
   public
     Device : TSnap7Device;
     constructor Create(DM_ID : integer);
@@ -136,6 +139,8 @@ type
     property Async : boolean read GetAsync write SetAsync;
     property LastError : integer read fLastError write SetFLastError;
     function WordSize(Amount, WordLength: integer) : integer;
+    property haveStoredTimer : boolean read fHaveStoredTimer;
+    function GetStoredTimerInterval : integer;
   end;
 
   TSnap7Poll = class(TObject)
@@ -157,12 +162,14 @@ type
   end;
 
 var
+//  strDatabaseName = 'D:\WORK\Projects\Delphi\snap7\database\dbase.fdb';
+  strDatabaseName : string;
   JobDone : boolean = false;
   JobResult : integer = 0;
 
 implementation
 
-procedure UpdateQuery(strQuery: string);
+procedure UpdateQuery(strQuery: string; doCleanup : boolean);
 var
   i : byte;
   DB : TIBDatabase;
@@ -170,6 +177,11 @@ var
 begin
   DB := TIBDatabase.Create(nil);
   DBt := TIBTransaction.Create(nil);
+  with TIniFile.Create(strConfigFileName) do try
+    strDatabaseName := ReadString('Database','Path','D:\WORK\Projects\Delphi\snap7\database\dbase.fdb');
+  finally
+    Free;
+  end;
   DB.DatabaseName := strDatabaseName;
   DB.LoginPrompt := false;
   for i := 0 to length(arrDBConnParams) - 1 do DB.Params.Add(arrDBConnParams[i]);
@@ -185,6 +197,14 @@ begin
     finally
       Free;
     end;
+    if doCleanup then with TIBQuery.Create(nil) do try
+      Database := DB;
+      Transaction := DBt;
+      SQL.Text := 'select count(*) from data_values;';
+      Open;
+    finally
+      Free;
+    end; // if doCleanup
   except
     raise Exception.Create(strErrorSQLExec + strQuery);
   end;
@@ -207,6 +227,11 @@ begin
   inherited Create;
   Database := TIBDatabase.Create(nil);
   Transaction := TIBTransaction.Create(nil);
+  with TIniFile.Create(strConfigFileName) do try
+    strDatabaseName := ReadString('Database','Path','D:\WORK\Projects\Delphi\snap7\database\dbase.fdb');
+  finally
+    Free;
+  end;
   Database.DatabaseName := strDatabaseName;
   Database.LoginPrompt := false;
   for i := 0 to length(arrDBConnParams) - 1 do Database.Params.Add(arrDBConnParams[i]);
@@ -255,15 +280,15 @@ begin
   end;
   UpdateQuery('insert into device(dev_id,name,addr,rack,slot) values('
     + IntToStr(newID) + ',''' + strName + ''',''' + strAddr + ''',' + IntToStr(iRack)
-    + ',' + IntToStr(iSlot) + ')');
+    + ',' + IntToStr(iSlot) + ')', false);
   slEnumDeviceIDs.Add(IntToStr(newID));
   AddDevice := newID;
 end;
 
 procedure TSnap7WorkArea.DeleteDevice(DEV_ID : integer);
 begin
-  UpdateQuery('delete from data_map where dev_id=' + IntToStr(DEV_ID) + ';');
-  UpdateQuery('delete from device where dev_id=' + IntToStr(DEV_ID) + ';');
+  UpdateQuery('delete from data_map where dev_id=' + IntToStr(DEV_ID) + ';', true);
+  UpdateQuery('delete from device where dev_id=' + IntToStr(DEV_ID) + ';', true);
 end;
 
 constructor TSnap7WorkArea.Create;
@@ -296,7 +321,7 @@ end;
 procedure TSnap7Device.SetName(NewName : string);
 begin
   UpdateQuery('update device set device.name = ''' + NewName
-    + ''' where device.dev_id=' + IntToStr(fId) + ';');
+    + ''' where device.dev_id=' + IntToStr(fId) + ';', false);
   fName := NewName;
 end;
 
@@ -308,7 +333,7 @@ end;
 procedure TSnap7Device.SetAddr(NewAddr : string);
 begin
   UpdateQuery('update device set device.addr = ''' + NewAddr
-    + ''' where device.dev_id=' + IntToStr(fId) + ';');
+    + ''' where device.dev_id=' + IntToStr(fId) + ';', false);
   fAddr := NewAddr;
 end;
 
@@ -320,7 +345,7 @@ end;
 procedure TSnap7Device.SetRack(NewRack : integer);
 begin
   UpdateQuery('update device set device.rack = ' + IntToStr(NewRack)
-    + ' where device.dev_id=' + IntToStr(fId) + ';');
+    + ' where device.dev_id=' + IntToStr(fId) + ';', false);
   fRack := NewRack;
 end;
 
@@ -332,7 +357,7 @@ end;
 procedure TSnap7Device.SetSlot(NewSlot : integer);
 begin
   UpdateQuery('update device set device.slot = ' + IntToStr(NewSlot)
-    + ' where device.dev_id=' + IntToStr(fId) + ';');
+    + ' where device.dev_id=' + IntToStr(fId) + ';', false);
   fSlot := NewSlot;
 end;
 
@@ -364,14 +389,24 @@ begin
   UpdateQuery('insert into data_map(dm_id,name,dev_id,area_id,db_num,data_start,'
     + 'data_amount,wlen_id) values(' + IntToStr(newID) + ',''' + strName + ''','
     + IntToStr(fId) + ',' + IntToStr(iAreaId) + ',' + IntToStr(iDBNum) + ',' + IntToStr(iDataStart)
-    + ',' + IntToStr(iDataAmount) + ',' + IntToStr(iWLenId) + ');');
+    + ',' + IntToStr(iDataAmount) + ',' + IntToStr(iWLenId) + ');', false);
   slEnumDataIDs.Add(IntToStr(newID));
   AddData := newID;
 end;
 
 procedure TSnap7Device.DelData(DM_ID : integer);
 begin
-  UpdateQuery('delete from data_map where dm_id=' + IntToStr(DM_ID) + ';');
+  UpdateQuery('delete from data_map where dm_id=' + IntToStr(DM_ID) + ';', true);
+  UpdateQuery('delete from data_values where dm_id=' + IntToStr(DM_ID) + ';', true);
+end;
+
+procedure TSnap7Device.DoCleanup;
+begin
+  // чистка мусора (финт ушами)
+  with TSelectQuery.Create('select count(*) from data_values;') do try
+  finally
+    Free;
+  end; // with TSelectQuery.Create
 end;
 
 constructor TSnap7Device.Create(DEV_ID: integer);
@@ -434,7 +469,7 @@ end;
 
 procedure TSnap7Data.SetName(strName : string);
 begin
-  UpdateQuery('update data_map set name = ''' + strName  + ''' where dm_id=' + IntToStr(fId) + ';');
+  UpdateQuery('update data_map set name = ''' + strName  + ''' where dm_id=' + IntToStr(fId) + ';', false);
   fName := strName;
 end;
 
@@ -446,7 +481,7 @@ end;
 procedure TSnap7Data.SetArea(iAreaId : integer);
 begin
   UpdateQuery('update data_map set area_id = ' + IntToStr(iAreaId)
-    + ' where dm_id=' + IntToStr(fId) + ';');
+    + ' where dm_id=' + IntToStr(fId) + ';', false);
   fArea := iAreaId;
 end;
 
@@ -458,7 +493,7 @@ end;
 procedure TSnap7Data.SetDBNum(iDBNum : integer);
 begin
   UpdateQuery('update data_map set db_num = ' + IntToStr(iDBNum)
-    + ' where dm_id=' + IntToStr(fId) + ';');
+    + ' where dm_id=' + IntToStr(fId) + ';', false);
   fDBNum := iDBNum;
 end;
 
@@ -470,7 +505,7 @@ end;
 procedure TSnap7Data.SetDataStart(iDataStart : integer);
 begin
   UpdateQuery('update data_map set data_start = ' + IntToStr(iDataStart)
-    + ' where dm_id=' + IntToStr(fId) + ';');
+    + ' where dm_id=' + IntToStr(fId) + ';', false);
   fDataStart := iDataStart;
 end;
 
@@ -482,7 +517,7 @@ end;
 procedure TSnap7Data.SetDataAmount(iDataAmount : integer);
 begin
   UpdateQuery('update data_map set data_amount = ' + IntToStr(iDataAmount)
-    + ' where dm_id=' + IntToStr(fId) + ';');
+    + ' where dm_id=' + IntToStr(fId) + ';', false);
   fDataAmount := iDataAmount;
 end;
 
@@ -494,7 +529,7 @@ end;
 procedure TSnap7Data.SetWLen(iWLenId : integer);
 begin
   UpdateQuery('update data_map set wlen_id = ' + IntToStr(iWlenId)
-    + ' where dm_id=' + IntToStr(fId) + ';');
+    + ' where dm_id=' + IntToStr(fId) + ';', false);
   fWlen := iWlenId;
 end;
 
@@ -530,8 +565,8 @@ end;
 
 procedure TSnap7Data.SetAsync(bAsync : boolean);
 begin
-  if bAsync then UpdateQuery('update data_map set async=1 where dm_id=' + IntToStr(fId) + ';')
-  else UpdateQuery('update data_map set async=0 where dm_id=' + IntToStr(fId) + ';');
+  if bAsync then UpdateQuery('update data_map set async=1 where dm_id=' + IntToStr(fId) + ';', false)
+  else UpdateQuery('update data_map set async=0 where dm_id=' + IntToStr(fId) + ';', false);
   fAsync := bAsync;
 end;
 
@@ -553,6 +588,25 @@ end;
 procedure TSnap7Data.SetFLastError(const Value: integer);
 begin
   FLastError := Value;
+end;
+
+function TSnap7Data.GetStoredTimerInterval : integer;
+begin
+  if fHaveStoredTimer then
+    with TSelectQuery.Create('select interval from stored_timers where dm_id='
+    + IntToStr(fId) + ';').Data do
+     GetStoredTimerInterval := Fields[0].AsInteger
+  else
+    GetStoredTimerInterval := 0;
+end;
+
+procedure TSnap7Data.DoCleanup;
+begin
+  // чистка мусора (финт ушами)
+  with TSelectQuery.Create('select count(*) from data_values;') do try
+  finally
+    Free;
+  end; // with TSelectQuery.Create
 end;
 
 constructor TSnap7Data.Create(DM_ID: integer);
@@ -588,6 +642,11 @@ begin
   finally
     Destroy;
   end;
+  with TSelectQuery.Create('select interval from stored_timers where dm_id=' + IntToStr(fId) + ';').Data do try
+    fHaveStoredTimer := RecordCount > 0;
+  finally
+    Destroy;
+  end;
 end;
 
 destructor TSnap7Data.Destroy;
@@ -607,17 +666,18 @@ begin
   Timer.Stop;
   if fStored then begin
     UpdateQuery('update stored_timers set interval=' + IntToStr(Timer.Interval)
-      + 'where dm_id=' + IntToStr(fDM_ID) + ';');
+      + 'where dm_id=' + IntToStr(fDM_ID) + ';', false);
   end
   else begin
     UpdateQuery('insert into stored_timers(dm_id,interval) values('
-      + IntToStr(fDM_ID) + ',' + IntToStr(Timer.Interval)+ ');');
+      + IntToStr(fDM_ID) + ',' + IntToStr(Timer.Interval)+ ');', false);
   end;
 end;
 
 procedure TSnap7Poll.Stop;
 begin
   Timer.Stop;
+  UpdateQuery('delete from stored_timers where dm_id=' + IntToStr(fDM_ID) + ';', false);
 end;
 
 procedure TSnap7Poll.GetData(Sender: TObject);
@@ -680,7 +740,7 @@ begin
     else
       Timer.Interval := interval;
   finally
-    Free;
+    Destroy;
   end;
   Timer.OnTimer := GetData;
 end;

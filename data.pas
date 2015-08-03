@@ -26,6 +26,9 @@ type
     SpeedButton1: TSpeedButton;
     SpeedButton2: TSpeedButton;
     Image1: TImage;
+    CheckBox1: TCheckBox;
+    Edit2: TEdit;
+    Label7: TLabel;
     procedure SpeedButton1Click(Sender: TObject);
     procedure SpeedButton2Click(Sender: TObject);
   private

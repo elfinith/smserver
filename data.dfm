@@ -3,7 +3,7 @@ object DataForm: TDataForm
   Top = 0
   BorderStyle = bsDialog
   Caption = #1041#1083#1086#1082' '#1076#1072#1085#1085#1099#1093
-  ClientHeight = 154
+  ClientHeight = 195
   ClientWidth = 320
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -5306,8 +5306,8 @@ object DataForm: TDataForm
     Caption = 'WLen'
   end
   object SpeedButton1: TSpeedButton
-    Left = 104
-    Top = 111
+    Left = 96
+    Top = 151
     Width = 104
     Height = 35
     Caption = #1057#1086#1093#1088#1072#1085#1080#1090#1100
@@ -5379,7 +5379,7 @@ object DataForm: TDataForm
   end
   object SpeedButton2: TSpeedButton
     Left = 214
-    Top = 111
+    Top = 151
     Width = 98
     Height = 35
     Caption = #1047#1072#1082#1088#1099#1090#1100
@@ -10692,6 +10692,14 @@ object DataForm: TDataForm
       00C0030000800100008001000000000000000000000000000000000000000000
       000000000000000000000000008001000080010000C0030000F00F0000}
   end
+  object Label7: TLabel
+    Left = 296
+    Top = 121
+    Width = 11
+    Height = 13
+    Caption = #1084#1089
+    Enabled = False
+  end
   object Edit1: TEdit
     Left = 56
     Top = 27
@@ -10750,5 +10758,22 @@ object DataForm: TDataForm
       'Real'
       'Counter'
       'Timer')
+  end
+  object CheckBox1: TCheckBox
+    Left = 65
+    Top = 120
+    Width = 154
+    Height = 17
+    Caption = #1047#1072#1076#1072#1085' '#1086#1087#1088#1086#1089' '#1080#1085#1090#1077#1088#1074#1072#1083#1086#1084
+    Enabled = False
+    TabOrder = 6
+  end
+  object Edit2: TEdit
+    Left = 221
+    Top = 118
+    Width = 68
+    Height = 21
+    Enabled = False
+    TabOrder = 7
   end
 end
