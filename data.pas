@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, usnap7, Buttons, ExtCtrls;
+  Dialogs, StdCtrls, usnap7, Buttons, ExtCtrls, pngimage, Grids, DBGrids;
 
 const
   strChangeDataProperties = 'Изменить сведения о блоке данных?';
@@ -29,6 +29,9 @@ type
     CheckBox1: TCheckBox;
     Edit2: TEdit;
     Label7: TLabel;
+    Image2: TImage;
+    Image3: TImage;
+    Image4: TImage;
     procedure SpeedButton1Click(Sender: TObject);
     procedure SpeedButton2Click(Sender: TObject);
   private

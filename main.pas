@@ -4,14 +4,14 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, usnap7, StdCtrls, ExtCtrls, ComCtrls, ToolWin, ImgList, device, interval, data, Contnrs,
-  Menus, IniFiles;
+  Dialogs, usnap7, StdCtrls, ExtCtrls, ComCtrls, ToolWin, ImgList, device,
+  interval, data, Contnrs, Menus, IniFiles, Buttons, Grids, ValEdit;
 
 const
-  bDebugMode = true;
   strDateTimeFormat = 'dd-mm-yyyy hh:MM:ss';
   strNewDeviceName = 'Новое устройство';
   strNewDeviceAddr = '127.0.0.1';
+  strNewDataBlock = 'Новый блок данных';
   iNewDeviceRack = 0;
   iNewDeviceSlot = 2;
   strDeleteDevice = 'Удалить устройство, все его блоки данных и все собранные с них данные?';
@@ -30,6 +30,7 @@ const
   iBtnImgAdd = 4;
   iBtnImgDelete = 5;
   iBtnImgPause = 6;
+  iBtnImgShowData = 7;
   iTNodeImgDevice = 0;
   iTNodeImgData = 1;
   iTNodeImgRunning = 2;
@@ -51,16 +52,12 @@ type
     property Items[Index: Integer]: TSnap7Poll read GetItems write SetItems; default;
   end;
 
-
   TForm1 = class(TForm)
     TrayIcon1: TTrayIcon;
     ToolBar1: TToolBar;
     ToolButton1: TToolButton;
     ToolButton2: TToolButton;
-    TreeView1: TTreeView;
     StatusBar1: TStatusBar;
-    Splitter1: TSplitter;
-    ListBox1: TListBox;
     ImageList1: TImageList;
     ImageList2: TImageList;
     ToolButton3: TToolButton;
@@ -70,6 +67,15 @@ type
     PopupMenu1: TPopupMenu;
     N1: TMenuItem;
     N2: TMenuItem;
+    ToolButton7: TToolButton;
+    Panel1: TPanel;
+    Splitter1: TSplitter;
+    TreeView1: TTreeView;
+    ListBox1: TListBox;
+    Panel2: TPanel;
+    Splitter2: TSplitter;
+    SpeedButton1: TSpeedButton;
+    ValueListEditor1: TValueListEditor;
     procedure ToolButton1Click(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure TreeView1DblClick(Sender: TObject);
@@ -85,6 +91,9 @@ type
     procedure TreeView1Change(Sender: TObject; Node: TTreeNode);
     procedure ToolButton6Click(Sender: TObject);
     procedure TrayIcon1Click(Sender: TObject);
+    procedure ToolButton7Click(Sender: TObject);
+    procedure SpeedButton1Click(Sender: TObject);
+    procedure ValueListEditor1Click(Sender: TObject);
   private
     { Private declarations }
     Devices : array of TSnap7Device;
@@ -104,6 +113,7 @@ var
   DeviceForm : TDeviceForm;
   DataForm : TDataForm;
   Config : TIniFile;
+  bDebugMode : boolean;
 
 implementation
 
@@ -112,7 +122,7 @@ implementation
 procedure LoadConfig;
 begin
   with Config do try
-
+    bDebugMode := ReadBool('Misc', 'DebugMode', true);
   except
     raise Exception.Create(strErrLoadConfig + FileName);
   end; // with Config
@@ -198,20 +208,21 @@ procedure TForm1.N2Click(Sender: TObject);
 var
   DEV_ID : integer;
 begin
-  case TreeView1.Selected.Level of
+  DEV_ID := 0;
+  with TreeView1.Selected do case Level of
   0 : begin
-    DEV_ID := TreeView1.Selected.Index;
+    DEV_ID := Index;
   end;
   1 : begin
-    DEV_ID := TreeView1.Selected.Parent.Index;
+    DEV_ID := Parent.Index;
   end;
   2 : begin
-    DEV_ID := TreeView1.Selected.Parent.Parent.Index;
+    DEV_ID := Parent.Parent.Index;
   end;
   end;
   DataForm := TDataForm.Create(Self);
   with DataForm do begin
-    Data := TSnap7Data.Create(Devices[DEV_ID].AddData('Новый блок данных',0,1,1,1,1));
+    Data := TSnap7Data.Create(Devices[DEV_ID].AddData(strNewDataBlock,0,1,1,1,1));
     Edit1.Text := Data.Name;
     ComboBox1.ItemIndex := Data.Area;
     Edit3.Text := IntToStr(Data.DBNum);
@@ -278,18 +289,18 @@ end;
 
 procedure TForm1.ShowDetails(Node: TTreeNode);
 begin
-  case TreeView1.Selected.Level of
+  with TreeView1.Selected do case Level of
   iLvlDevices : begin
     DeviceForm := TDeviceForm.Create(Self);
     with DeviceForm do begin
-      Device := Devices[TreeView1.Selected.Index];
-      Edit1.Text := Devices[TreeView1.Selected.Index].Name;
-      Edit2.Text := Devices[TreeView1.Selected.Index].Addr;
-      Edit3.Text := IntToStr(Devices[TreeView1.Selected.Index].Rack);
-      Edit4.Text := IntToStr(Devices[TreeView1.Selected.Index].Slot);
+      Device := Devices[Index];
+      Edit1.Text := Devices[Index].Name;
+      Edit2.Text := Devices[Index].Addr;
+      Edit3.Text := IntToStr(Devices[Index].Rack);
+      Edit4.Text := IntToStr(Devices[Index].Slot);
       ShowModal;
     end; // with DeviceForm
-  end;
+  end; // with TreeView1.Selected
   iLvlDataBlocks : begin
     DataForm := TDataForm.Create(Self);
     with DataForm do begin
@@ -311,6 +322,11 @@ begin
 end;
 
 
+procedure TForm1.SpeedButton1Click(Sender: TObject);
+begin
+  Panel2.Hide;
+end;
+
 procedure TForm1.DisplayMessage(str: string);
 begin
   ListBox1.Items.Add('[' + FormatDateTime(strDateTimeFormat, Now()) + '] ' + str);
@@ -323,33 +339,33 @@ end;
 
 procedure TForm1.ToolButton2Click(Sender: TObject);
 var
-  Timer : TSnap7Poll;
   ivlForm : TIntervalForm;
 begin
-  if TreeView1.Selected.Level = iLvlDataBlocks then begin
-    case TreeView1.Selected.ImageIndex of
+  with TreeView1.Selected do if Level = iLvlDataBlocks then begin
+    case ImageIndex of
     iTNodeImgData : begin
       ivlForm := TIntervalForm.Create(Self);
       ivlForm.ShowModal;
-      AddPollFor(StrToInt(TreeView1.Selected.getFirstChild.Text),StrToInt(ivlForm.Edit1.Text));
-      TreeView1.Selected.ImageIndex := iTNodeImgRunning;
+      AddPollFor(StrToInt(getFirstChild.Text),StrToInt(ivlForm.Edit1.Text));
+      ImageIndex := iTNodeImgRunning;
       ToolButton2.ImageIndex := iBtnImgStop;
       ToolButton6.Enabled := true;
     end;
     iTNodeImgRunning : begin
-      RemovePollFor(StrToInt(TreeView1.Selected.getFirstChild.Text));
-      TreeView1.Selected.ImageIndex := iTNodeImgData;
+      RemovePollFor(StrToInt(getFirstChild.Text));
+      ImageIndex := iTNodeImgData;
       ToolButton2.ImageIndex := iBtnImgRun;
+      ToolButton6.Enabled := false;
     end;
     iTNodeImgPaused : begin
-      AddPollFor(StrToInt(TreeView1.Selected.getFirstChild.Text),0);
-      TreeView1.Selected.ImageIndex := iTNodeImgRunning;
+      AddPollFor(StrToInt(getFirstChild.Text),0);
+      ImageIndex := iTNodeImgRunning;
       ToolButton2.ImageIndex := iBtnImgStop;
       ToolButton6.Enabled := true;
     end;
     end; // case
-    TreeView1.Selected.SelectedIndex := TreeView1.Selected.ImageIndex;
-  end;
+    SelectedIndex := ImageIndex;
+  end; // with TreeView1.Selected
 end;
 
 procedure TForm1.ToolButton3Click(Sender: TObject);
@@ -358,20 +374,18 @@ begin
 end;
 
 procedure TForm1.ToolButton4Click(Sender: TObject);
-var
-  newDevId : integer;
 begin
-  case TreeView1.Selected.Level of
+  with TreeView1.Selected do case Level of
   iLvlDevices : begin
-    N2.Caption := strAddDataFor + '"' + TreeView1.Selected.Text + '"';
+    N2.Caption := strAddDataFor + '"' + Text + '"';
   end;
   iLvlDataBlocks : begin
-    N2.Caption := strAddDataFor + '"' + TreeView1.Selected.Parent.Text + '"';
+    N2.Caption := strAddDataFor + '"' + Parent.Text + '"';
   end;
   iLvlDetails : begin
-    N2.Caption := strAddDataFor + '"' + TreeView1.Selected.Parent.Parent.Text + '"';
+    N2.Caption := strAddDataFor + '"' + Parent.Parent.Text + '"';
   end;
-  end;
+  end; // with TreeView1.Selected
   PopupMenu1.Popup(Left + ToolButton4.Left, Top + TreeView1.Top);
 end;
 
@@ -379,18 +393,18 @@ procedure TForm1.ToolButton5Click(Sender: TObject);
 var
   DEV_ID, DM_ID : integer;
 begin
-  case TreeView1.Selected.Level of
+  with TreeView1.Selected do case Level of
   iLvlDevices : begin
     if MessageDlg(strDeleteDevice, mtConfirmation, [mbyes, mbno], 0) = mryes
     then with TSnap7WorkArea.Create do try
-      DeleteDevice(Devices[TreeView1.Selected.Index].Id);
+      DeleteDevice(Devices[Index].Id);
     finally
       Free;
     end;
   end;
   iLvlDataBlocks : begin
-    DEV_ID := TreeView1.Selected.Parent.Index;
-    DM_ID := TSnap7Data.Create(StrToInt(TreeView1.Selected.getFirstChild.Text)).Id;
+    DEV_ID := Parent.Index;
+    DM_ID := TSnap7Data.Create(StrToInt(getFirstChild.Text)).Id;
     if MessageDlg(strDeleteData, mtConfirmation, [mbyes, mbno], 0) = mryes
     then with TSnap7Device.Create(DEV_ID) do try
       DelData(DM_ID);
@@ -413,6 +427,36 @@ begin
   end; // with TreeView1.Selected
 end;
 
+procedure TForm1.ToolButton7Click(Sender: TObject);
+var
+  ABuffer: AnsiString;
+  AText: WideString;
+  l : integer;
+begin
+  ValueListEditor1.Strings.Clear;
+  with TSnap7Data.Create(StrToInt(TreeView1.Selected.getFirstChild.Text)) do try
+    l := DataAmount;
+  finally
+    Destroy;
+  end;
+  with TSelectQuery.Create('select poll_time, poll_data from data_values where dm_id = '
+  + TreeView1.Selected.getFirstChild.Text).Data do try
+    while not(EOF) do try
+      ABuffer := StringOf(Fields[1].AsBytes);
+      SetLength(AText,l*2);
+      BinToHex(PAnsiChar(ABuffer), PWideChar(AText), l);
+      ValueListEditor1.InsertRow(Fields[0].AsString, AText, true);
+      Next;
+    except
+      on E:Exception do
+        DisplayMessage(E.Classname + ': ' + E.Message);
+    end; // while not(EOF)
+  finally
+    Destroy;
+  end;
+  Panel2.Show;
+end;
+
 procedure TForm1.TrayIcon1Click(Sender: TObject);
 begin
   with Application do begin
@@ -423,7 +467,8 @@ end;
 
 procedure TForm1.TreeView1Change(Sender: TObject; Node: TTreeNode);
 begin
-  if TreeView1.Selected.Level = 1 then case TreeView1.Selected.ImageIndex of
+  if TreeView1.Selected.Level = iLvlDataBlocks then begin
+    case TreeView1.Selected.ImageIndex of
     iTNodeImgData : begin
       ToolButton2.ImageIndex := iBtnImgRun;
       ToolButton6.Enabled := false;
@@ -432,13 +477,23 @@ begin
       ToolButton2.ImageIndex := iBtnImgStop;
       ToolButton6.Enabled := true;
     end;
+    end;
+    ToolButton7.Enabled := true;
+  end
+  else begin
+    ToolButton7.Enabled := false;
   end;
-
+  Panel2.Hide;
 end;
 
 procedure TForm1.TreeView1DblClick(Sender: TObject);
 begin
   ShowDetails(TreeView1.Selected);
+end;
+
+procedure TForm1.ValueListEditor1Click(Sender: TObject);
+begin
+
 end;
 
 { TimersList }
