@@ -16,6 +16,7 @@ const
   iNewDeviceSlot = 2;
   strDeleteDevice = 'Удалить устройство, все его блоки данных и все собранные с них данные?';
   strDeleteData = 'Удалить блок данных и все собранные с него данные?';
+  strClearData = 'Удалить все сохранённые данные для данного блока?';
   strAddDevice = 'Добавить устройство';
   strAddDataFor = 'Создать блок данных для ';
   strConfigFile = 'config.ini';
@@ -73,9 +74,9 @@ type
     TreeView1: TTreeView;
     ListBox1: TListBox;
     Panel2: TPanel;
-    Splitter2: TSplitter;
     SpeedButton1: TSpeedButton;
     ValueListEditor1: TValueListEditor;
+    SpeedButton2: TSpeedButton;
     procedure ToolButton1Click(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure TreeView1DblClick(Sender: TObject);
@@ -94,6 +95,7 @@ type
     procedure ToolButton7Click(Sender: TObject);
     procedure SpeedButton1Click(Sender: TObject);
     procedure ValueListEditor1Click(Sender: TObject);
+    procedure SpeedButton2Click(Sender: TObject);
   private
     { Private declarations }
     Devices : array of TSnap7Device;
@@ -325,6 +327,18 @@ end;
 procedure TForm1.SpeedButton1Click(Sender: TObject);
 begin
   Panel2.Hide;
+end;
+
+procedure TForm1.SpeedButton2Click(Sender: TObject);
+begin
+  if MessageDlg(strClearData, mtConfirmation, [mbyes, mbno], 0) = mryes then begin
+    with TSnap7Data.Create(StrtoInt(TreeView1.Selected.getFirstChild.Text)) do try
+      ClearStoredData;
+    finally
+      Destroy;
+    end;
+    Panel2.Hide;
+  end; // if MessageDlg
 end;
 
 procedure TForm1.DisplayMessage(str: string);

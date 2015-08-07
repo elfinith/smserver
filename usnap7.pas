@@ -141,6 +141,7 @@ type
     function WordSize(Amount, WordLength: integer) : integer;
     property haveStoredTimer : boolean read fHaveStoredTimer;
     function GetStoredTimerInterval : integer;
+    procedure ClearStoredData;
   end;
 
   TSnap7Poll = class(TObject)
@@ -607,6 +608,11 @@ begin
   finally
     Free;
   end; // with TSelectQuery.Create
+end;
+
+procedure TSnap7Data.ClearStoredData;
+begin
+  UpdateQuery('delete from data_values where dm_id=' + IntToStr(fId) + ';', true);
 end;
 
 constructor TSnap7Data.Create(DM_ID: integer);
