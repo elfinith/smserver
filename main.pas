@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, usnap7, StdCtrls, ExtCtrls, ComCtrls, ToolWin, ImgList, device,
-  interval, data, Contnrs, Menus, IniFiles, Buttons, Grids, ValEdit;
+  interval, data, Contnrs, Menus, IniFiles, Buttons, Grids, ValEdit, CommCtrl;
 
 const
   strDateTimeFormat = 'dd-mm-yyyy hh:MM:ss';
@@ -21,6 +21,8 @@ const
   strAddDataFor = 'Создать блок данных для ';
   strConfigFile = 'config.ini';
   strErrLoadConfig = 'Ошибка загрузки конфигурации из файла ';
+  strStartDevicePolling = 'Запустить опрос всех блоков данных на ';
+  strStopDevicePolling = 'Остановить опрос всех блоков данных на ';
   iLvlDevices = 0;
   iLvlDataBlocks = 1;
   iLvlDetails = 2;
@@ -130,6 +132,19 @@ begin
   end; // with Config
 end;
 
+procedure SetNodeState(node: TTreeNode; Flags: Integer);
+var tvi: TTVItem;
+begin
+  FillChar(tvi, Sizeof(tvi), 0);
+  with tvi do begin
+    hItem := node.ItemID;
+    mask := TVIF_STATE;
+    stateMask := TVIS_BOLD or TVIS_CUT;
+    state := Flags;
+  end; // with tvi
+  TreeView_SetItem(node.Handle, tvi);
+end;
+
 procedure TForm1.AddPollFor(DM_ID, Interval : integer);
 var
   newPoll : TSnap7Poll;
@@ -212,13 +227,13 @@ var
 begin
   DEV_ID := 0;
   with TreeView1.Selected do case Level of
-  0 : begin
+  iLvlDevices : begin
     DEV_ID := Index;
   end;
-  1 : begin
+  iLvlDataBlocks : begin
     DEV_ID := Parent.Index;
   end;
-  2 : begin
+  iLvlDetails : begin
     DEV_ID := Parent.Parent.Index;
   end;
   end;
@@ -248,11 +263,16 @@ begin
       Devices[i] := TSnap7Device.Create(StrToInt(EnumDeviceIDs[i]));
       with Devices[i] do begin
         tvDevice := TreeView1.Items.Add(nil, Name);
-        if not(isConnected) then DisplayMessage(strErrorDeviceConnect + ' ' + Name);
+        if not(isConnected) then begin
+          DisplayMessage(strErrorDeviceConnect + ' ' + Name);
+          SetNodeState(tvDevice, TVIS_BOLD or TVIS_CUT);
+        end
+        else SetNodeState(tvDevice, TVIS_BOLD);
       end; // with Devices[i]
       for j := 0 to Devices[i].EnumDataIDs.Count - 1 do begin
         with TSnap7Data.Create(StrToInt(Devices[i].EnumDataIDs[j])) do try
           tvItem := TreeView1.Items.AddChild(tvDevice, Name);
+          if not(Devices[i].isConnected) then SetNodeState(tvItem, TVIS_CUT);
           with tvItem do begin
             if not(haveStoredTimer) then
               ImageIndex := iTNodeImgData
@@ -354,13 +374,46 @@ end;
 procedure TForm1.ToolButton2Click(Sender: TObject);
 var
   ivlForm : TIntervalForm;
+  Child : TTreeNode;
+  idx : integer;
+  isFormShown : boolean;
 begin
-  with TreeView1.Selected do if Level = iLvlDataBlocks then begin
+  with TreeView1.Selected do case Level of
+  iLvlDevices : begin
+    idx := ToolButton2.ImageIndex;
+    case idx of
+      iBtnImgRun : if MessageDlg(strStartDevicePolling + Text + ' ?',  mtConfirmation, [mbyes, mbno], 0) = mryes then begin
+        isFormShown := false;
+        Child := getFirstChild;
+        while Child <> nil do begin
+          if not(isFormShown) then begin
+            ivlForm := TIntervalForm.Create(Self);
+            ivlForm.ShowModal;
+            isFormShown := true;
+          end; // if not(isFormShown)
+          AddPollFor(StrToInt(Child.getFirstChild.Text), StrToInt(ivlForm.Edit1.Text));
+          Child.ImageIndex := iTNodeImgRunning;
+          Child := GetNextChild(Child);
+        end; // while Child <> nil
+        ToolButton2.ImageIndex := iBtnImgStop;
+      end;
+      iBtnImgStop : if MessageDlg(strStopDevicePolling + Text + ' ?',  mtConfirmation, [mbyes, mbno], 0) = mryes then begin
+        Child := getFirstChild;
+        while Child <> nil do begin
+          RemovePollFor(StrToInt(Child.getFirstChild.Text));
+          Child.ImageIndex := iTNodeImgData;
+          Child := GetNextChild(Child);
+        end; // while Child <> nil
+        ToolButton2.ImageIndex := iBtnImgRun;
+      end;
+    end; // case idx
+  end; // iLvlDevices :
+  iLvlDataBlocks : begin
     case ImageIndex of
     iTNodeImgData : begin
       ivlForm := TIntervalForm.Create(Self);
       ivlForm.ShowModal;
-      AddPollFor(StrToInt(getFirstChild.Text),StrToInt(ivlForm.Edit1.Text));
+      AddPollFor(StrToInt(getFirstChild.Text), StrToInt(ivlForm.Edit1.Text));
       ImageIndex := iTNodeImgRunning;
       ToolButton2.ImageIndex := iBtnImgStop;
       ToolButton6.Enabled := true;
@@ -377,9 +430,10 @@ begin
       ToolButton2.ImageIndex := iBtnImgStop;
       ToolButton6.Enabled := true;
     end;
-    end; // case
+    end; // case ImageIndex
     SelectedIndex := ImageIndex;
-  end; // with TreeView1.Selected
+  end;
+  end;
 end;
 
 procedure TForm1.ToolButton3Click(Sender: TObject);
@@ -432,13 +486,17 @@ end;
 
 procedure TForm1.ToolButton6Click(Sender: TObject);
 begin
-  PausePollFor(StrToInt(TreeView1.Selected.getFirstChild.Text));
-  ToolButton2.ImageIndex := iBtnImgRun;
-  ToolButton6.Enabled := false;
-  with TreeView1.Selected do begin
-    ImageIndex := iTNodeImgPaused;
-    SelectedIndex := ImageIndex;
-  end; // with TreeView1.Selected
+  case TreeView1.Selected.Level of
+  iLvlDataBlocks : begin
+    PausePollFor(StrToInt(TreeView1.Selected.getFirstChild.Text));
+    ToolButton2.ImageIndex := iBtnImgRun;
+    ToolButton6.Enabled := false;
+    with TreeView1.Selected do begin
+      ImageIndex := iTNodeImgPaused;
+      SelectedIndex := ImageIndex;
+    end; // with TreeView1.Selected
+  end;
+  end; // case TreeView1.Selected.Level
 end;
 
 procedure TForm1.ToolButton7Click(Sender: TObject);
@@ -480,8 +538,20 @@ begin
 end;
 
 procedure TForm1.TreeView1Change(Sender: TObject; Node: TTreeNode);
+var
+  Child : TTreeNode;
 begin
-  if TreeView1.Selected.Level = iLvlDataBlocks then begin
+  case TreeView1.Selected.Level of
+  iLvlDevices : begin
+    ToolButton2.ImageIndex := iBtnImgRun;
+    Child := TreeView1.Selected.getFirstChild;
+    while Child <> nil do begin
+      if Child.ImageIndex = iTNodeImgRunning then ToolButton2.ImageIndex := iBtnImgStop;
+      Child := TreeView1.Selected.GetNextChild(Child);
+    end;
+    ToolButton7.Enabled := false;
+  end;
+  iLvlDataBlocks : begin
     case TreeView1.Selected.ImageIndex of
     iTNodeImgData : begin
       ToolButton2.ImageIndex := iBtnImgRun;
@@ -491,12 +561,11 @@ begin
       ToolButton2.ImageIndex := iBtnImgStop;
       ToolButton6.Enabled := true;
     end;
-    end;
+    end; // case TreeView1.Selected.ImageIndex
     ToolButton7.Enabled := true;
-  end
-  else begin
-    ToolButton7.Enabled := false;
   end;
+  else ToolButton7.Enabled := false;
+  end; // case TreeView1.Selected.Level
   Panel2.Hide;
 end;
 

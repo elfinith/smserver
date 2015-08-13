@@ -3,7 +3,7 @@ object DataForm: TDataForm
   Top = 0
   BorderStyle = bsDialog
   Caption = #1041#1083#1086#1082' '#1076#1072#1085#1085#1099#1093
-  ClientHeight = 200
+  ClientHeight = 175
   ClientWidth = 353
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -5306,9 +5306,9 @@ object DataForm: TDataForm
     Caption = 'WLen'
   end
   object SpeedButton1: TSpeedButton
-    Left = 129
-    Top = 152
-    Width = 104
+    Left = 168
+    Top = 136
+    Width = 88
     Height = 35
     Caption = #1057#1086#1093#1088#1072#1085#1080#1090#1100
     Flat = True
@@ -5378,9 +5378,9 @@ object DataForm: TDataForm
     OnClick = SpeedButton1Click
   end
   object SpeedButton2: TSpeedButton
-    Left = 247
-    Top = 152
-    Width = 98
+    Left = 262
+    Top = 136
+    Width = 83
     Height = 35
     Caption = #1047#1072#1082#1088#1099#1090#1100
     Flat = True

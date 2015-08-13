@@ -3,7 +3,7 @@ object DeviceForm: TDeviceForm
   Top = 0
   BorderStyle = bsDialog
   Caption = #1048#1085#1092#1086#1088#1084#1072#1094#1080#1103' '#1086#1073' '#1091#1089#1090#1088#1086#1081#1089#1090#1074#1077
-  ClientHeight = 158
+  ClientHeight = 148
   ClientWidth = 274
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -5343,11 +5343,12 @@ object DeviceForm: TDeviceForm
     Caption = 'Slot'
   end
   object SpeedButton1: TSpeedButton
-    Left = 48
-    Top = 115
-    Width = 105
+    Left = 96
+    Top = 108
+    Width = 82
     Height = 32
     Caption = #1057#1086#1093#1088#1072#1085#1080#1090#1100
+    Flat = True
     Glyph.Data = {
       F6060000424DF606000000000000360000002800000018000000180000000100
       180000000000C0060000120B0000120B00000000000000000000FFFFFFFFFFFF
@@ -5408,11 +5409,12 @@ object DeviceForm: TDeviceForm
     OnClick = SpeedButton1Click
   end
   object SpeedButton2: TSpeedButton
-    Left = 159
-    Top = 115
-    Width = 107
+    Left = 184
+    Top = 108
+    Width = 82
     Height = 32
     Caption = #1047#1072#1082#1088#1099#1090#1100
+    Flat = True
     Glyph.Data = {
       F6060000424DF606000000000000360000002800000018000000180000000100
       180000000000C0060000120B0000120B00000000000000000000FFFFFFFFFFFF

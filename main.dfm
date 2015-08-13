@@ -97,23 +97,20 @@ object Form1: TForm1
     Width = 619
     Height = 19
     Panels = <>
-    ExplicitTop = 494
-    ExplicitWidth = 567
   end
   object Panel1: TPanel
     Left = 0
     Top = 30
-    Width = 436
+    Width = 424
     Height = 407
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 2
-    ExplicitWidth = 380
-    ExplicitHeight = 464
+    ExplicitWidth = 436
     object Splitter1: TSplitter
       Left = 0
       Top = 329
-      Width = 436
+      Width = 424
       Height = 4
       Cursor = crVSplit
       Align = alBottom
@@ -124,7 +121,7 @@ object Form1: TForm1
     object TreeView1: TTreeView
       Left = 0
       Top = 0
-      Width = 436
+      Width = 424
       Height = 329
       Align = alClient
       HideSelection = False
@@ -134,37 +131,33 @@ object Form1: TForm1
       TabOrder = 0
       OnChange = TreeView1Change
       OnDblClick = TreeView1DblClick
-      ExplicitWidth = 380
-      ExplicitHeight = 386
+      ExplicitWidth = 436
     end
     object ListBox1: TListBox
       Left = 0
       Top = 333
-      Width = 436
+      Width = 424
       Height = 74
       Align = alBottom
       ItemHeight = 13
       TabOrder = 1
-      ExplicitTop = 390
-      ExplicitWidth = 380
+      ExplicitWidth = 436
     end
   end
   object Panel2: TPanel
-    Left = 436
+    Left = 424
     Top = 30
-    Width = 183
+    Width = 195
     Height = 407
     Align = alRight
     BevelOuter = bvNone
     TabOrder = 3
     Visible = False
-    ExplicitLeft = 384
-    ExplicitHeight = 464
     DesignSize = (
-      183
+      195
       407)
     object SpeedButton1: TSpeedButton
-      Left = 160
+      Left = 173
       Top = 0
       Width = 17
       Height = 17
@@ -203,7 +196,7 @@ object Form1: TForm1
       OnClick = SpeedButton1Click
     end
     object SpeedButton2: TSpeedButton
-      Left = 137
+      Left = 152
       Top = 0
       Width = 17
       Height = 17
@@ -243,7 +236,7 @@ object Form1: TForm1
     object ValueListEditor1: TValueListEditor
       Left = 4
       Top = 22
-      Width = 175
+      Width = 187
       Height = 380
       Anchors = [akLeft, akTop, akRight, akBottom]
       Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goColSizing, goRowSelect, goThumbTracking]
@@ -254,7 +247,7 @@ object Form1: TForm1
       OnClick = ValueListEditor1Click
       ColWidths = (
         107
-        62)
+        74)
     end
   end
   object TrayIcon1: TTrayIcon
@@ -5627,7 +5620,7 @@ object Form1: TForm1
     Left = 336
     Top = 200
     Bitmap = {
-      494C010108001401040218001800FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C0101080014010C0218001800FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       000000000000360000002800000060000000480000000100200000000000006C
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -6529,7 +6522,7 @@ object Form1: TForm1
     Left = 288
     Top = 200
     Bitmap = {
-      494C0101080040023C0110001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010108004002440110001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000003000000001002000000000000030
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
