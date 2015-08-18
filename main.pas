@@ -96,7 +96,6 @@ type
     procedure TrayIcon1Click(Sender: TObject);
     procedure ToolButton7Click(Sender: TObject);
     procedure SpeedButton1Click(Sender: TObject);
-    procedure ValueListEditor1Click(Sender: TObject);
     procedure SpeedButton2Click(Sender: TObject);
   private
     { Private declarations }
@@ -143,6 +142,46 @@ begin
     state := Flags;
   end; // with tvi
   TreeView_SetItem(node.Handle, tvi);
+end;
+
+function GetNodeState(node: TTreeNode): integer;
+var
+  tvi: TTVItem;
+  i:integer;
+begin
+  FillChar(tvi, SizeOf(tvi), 0);
+  with tvi do begin
+    hItem := node.ItemID;
+    Mask := TVIF_STATE;
+    stateMask := TVIS_BOLD or TVIS_CUT;
+//    StateMask := TVIS_STATEIMAGEMASK;
+  end; // with tvi
+  TreeView_GetItem(node.Handle, tvi);
+  result := tvi.state;
+end;
+
+function RusMessageDialog(const Msg: string; DlgType: TMsgDlgType;
+   Buttons: TMsgDlgButtons; Captions: array of string): Integer;
+var
+  aMsgDlg: TForm;
+  i: Integer;
+  dlgButton: TButton;
+  CaptionIndex: Integer;
+begin
+  aMsgDlg := CreateMessageDialog(Msg, DlgType, Buttons);
+  captionIndex := 0;
+  // перебор по объектам в диалоге
+  for i := 0 to aMsgDlg.ComponentCount - 1 do begin
+    // если кнопка
+    if (aMsgDlg.Components[i] is TButton) then begin
+      dlgButton := TButton(aMsgDlg.Components[i]);
+      if CaptionIndex > High(Captions) then Break;
+      // загружаем новый заголовок из нашего массива заголовков
+      dlgButton.Caption := Captions[CaptionIndex];
+      inc(CaptionIndex);
+    end;
+  end;
+  Result := aMsgDlg.ShowModal;
 end;
 
 procedure TForm1.AddPollFor(DM_ID, Interval : integer);
@@ -351,7 +390,7 @@ end;
 
 procedure TForm1.SpeedButton2Click(Sender: TObject);
 begin
-  if MessageDlg(strClearData, mtConfirmation, [mbyes, mbno], 0) = mryes then begin
+  if RusMessageDialog(strClearData, mtConfirmation, mbYesNo, ['ОК', 'Отмена']) = mryes then begin
     with TSnap7Data.Create(StrtoInt(TreeView1.Selected.getFirstChild.Text)) do try
       ClearStoredData;
     finally
@@ -378,11 +417,12 @@ var
   idx : integer;
   isFormShown : boolean;
 begin
-  with TreeView1.Selected do case Level of
+  if TreeView1.Selected <> nil then with TreeView1.Selected do case Level of
   iLvlDevices : begin
     idx := ToolButton2.ImageIndex;
     case idx of
-      iBtnImgRun : if MessageDlg(strStartDevicePolling + Text + ' ?',  mtConfirmation, [mbyes, mbno], 0) = mryes then begin
+      iBtnImgRun :
+        if RusMessageDialog(strStartDevicePolling + Text + ' ?', mtConfirmation, mbYesNo, ['ОК', 'Отмена']) = mryes then begin
         isFormShown := false;
         Child := getFirstChild;
         while Child <> nil do begin
@@ -397,7 +437,8 @@ begin
         end; // while Child <> nil
         ToolButton2.ImageIndex := iBtnImgStop;
       end;
-      iBtnImgStop : if MessageDlg(strStopDevicePolling + Text + ' ?',  mtConfirmation, [mbyes, mbno], 0) = mryes then begin
+      iBtnImgStop :
+        if RusMessageDialog(strStopDevicePolling + Text + ' ?', mtConfirmation, mbYesNo, ['ОК', 'Отмена']) = mryes then begin
         Child := getFirstChild;
         while Child <> nil do begin
           RemovePollFor(StrToInt(Child.getFirstChild.Text));
@@ -438,7 +479,7 @@ end;
 
 procedure TForm1.ToolButton3Click(Sender: TObject);
 begin
-  ShowDetails(TreeView1.Selected);
+  if TreeView1.Selected <> nil then ShowDetails(TreeView1.Selected);
 end;
 
 procedure TForm1.ToolButton4Click(Sender: TObject);
@@ -463,7 +504,7 @@ var
 begin
   with TreeView1.Selected do case Level of
   iLvlDevices : begin
-    if MessageDlg(strDeleteDevice, mtConfirmation, [mbyes, mbno], 0) = mryes
+    if RusMessageDialog(strDeleteDevice, mtConfirmation, mbYesNo, ['ОК', 'Отмена']) = mryes
     then with TSnap7WorkArea.Create do try
       DeleteDevice(Devices[Index].Id);
     finally
@@ -473,7 +514,7 @@ begin
   iLvlDataBlocks : begin
     DEV_ID := Parent.Index;
     DM_ID := TSnap7Data.Create(StrToInt(getFirstChild.Text)).Id;
-    if MessageDlg(strDeleteData, mtConfirmation, [mbyes, mbno], 0) = mryes
+    if RusMessageDialog(strDeleteData, mtConfirmation, mbYesNo, ['ОК', 'Отмена']) = mryes
     then with TSnap7Device.Create(DEV_ID) do try
       DelData(DM_ID);
     finally
@@ -512,7 +553,7 @@ begin
     Destroy;
   end;
   with TSelectQuery.Create('select poll_time, poll_data from data_values where dm_id = '
-  + TreeView1.Selected.getFirstChild.Text).Data do try
+  + TreeView1.Selected.getFirstChild.Text + ' order by poll_time').Data do try
     while not(EOF) do try
       ABuffer := StringOf(Fields[1].AsBytes);
       SetLength(AText,l*2);
@@ -541,6 +582,7 @@ procedure TForm1.TreeView1Change(Sender: TObject; Node: TTreeNode);
 var
   Child : TTreeNode;
 begin
+  ToolButton2.Enabled := not(GetNodeState(TreeView1.Selected) and TVIS_CUT = TVIS_CUT);
   case TreeView1.Selected.Level of
   iLvlDevices : begin
     ToolButton2.ImageIndex := iBtnImgRun;
@@ -572,11 +614,6 @@ end;
 procedure TForm1.TreeView1DblClick(Sender: TObject);
 begin
   ShowDetails(TreeView1.Selected);
-end;
-
-procedure TForm1.ValueListEditor1Click(Sender: TObject);
-begin
-
 end;
 
 { TimersList }
