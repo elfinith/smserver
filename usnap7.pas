@@ -10,6 +10,37 @@ const
   arrDBConnParams : array[0..2] of string = (
     'user_name=sysdba', 'PASSWORD=masterkey', 'lc_ctype=win1251'
   );
+  arrDBInitScript : array[0..27] of string = (
+    'CREATE TABLE AREA (AREA_ID INTEGER NOT NULL, AREA_VALUE  INTEGER NOT NULL);',
+    'CREATE TABLE DATA_MAP (DM_ID INTEGER NOT NULL, NAME VARCHAR(50), DEV_ID INTEGER, AREA_ID INTEGER, DB_NUM INTEGER, DATA_START INTEGER, DATA_AMOUNT INTEGER, WLEN_ID INTEGER, ASYNC INTEGER );',
+    'CREATE TABLE DATA_VALUES (DM_ID INTEGER NOT NULL, POLL_TIME TIMESTAMP NOT NULL, POLL_DATA  BLOB SUB_TYPE 0 SEGMENT SIZE 80 NOT NULL );',
+    'CREATE TABLE DEVICE (DEV_ID  INTEGER NOT NULL, NAME VARCHAR(50) NOT NULL, ADDR VARCHAR(15) NOT NULL, RACK INTEGER, SLOT INTEGER );',
+    'CREATE TABLE STORED_TIMERS (DM_ID INTEGER NOT NULL, INTERVAL INTEGER NOT NULL);',
+    'CREATE TABLE WLEN (WLEN_ID INTEGER NOT NULL, WLEN_VALUE INTEGER NOT NULL);',
+    'ALTER TABLE AREA ADD CONSTRAINT PK_AREA PRIMARY KEY (AREA_ID);',
+    'ALTER TABLE DATA_MAP ADD CONSTRAINT PK_DATA_MAP PRIMARY KEY (DM_ID);',
+    'ALTER TABLE DEVICE ADD CONSTRAINT PK_DEVICE PRIMARY KEY (DEV_ID);',
+    'ALTER TABLE STORED_TIMERS ADD CONSTRAINT PK_STORED_TIMERS PRIMARY KEY (DM_ID);',
+    'ALTER TABLE WLEN ADD CONSTRAINT PK_WLEN PRIMARY KEY (WLEN_ID);',
+    'ALTER TABLE DATA_MAP ADD CONSTRAINT FK_DATA_MAP_1 FOREIGN KEY (DEV_ID) REFERENCES DEVICE (DEV_ID);',
+    'ALTER TABLE DATA_MAP ADD CONSTRAINT FK_DATA_MAP_2 FOREIGN KEY (AREA_ID) REFERENCES AREA (AREA_ID);',
+    'ALTER TABLE DATA_MAP ADD CONSTRAINT FK_DATA_MAP_3 FOREIGN KEY (WLEN_ID) REFERENCES WLEN (WLEN_ID);',
+    'ALTER TABLE STORED_TIMERS ADD CONSTRAINT FK_STORED_TIMERS_1 FOREIGN KEY (DM_ID) REFERENCES DATA_MAP (DM_ID);',
+    'INSERT INTO WLEN (WLEN_ID, WLEN_VALUE) VALUES (0, 1);',
+    'INSERT INTO WLEN (WLEN_ID, WLEN_VALUE) VALUES (1, 2);',
+    'INSERT INTO WLEN (WLEN_ID, WLEN_VALUE) VALUES (2, 4);',
+    'INSERT INTO WLEN (WLEN_ID, WLEN_VALUE) VALUES (3, 6);',
+    'INSERT INTO WLEN (WLEN_ID, WLEN_VALUE) VALUES (4, 8);',
+    'INSERT INTO WLEN (WLEN_ID, WLEN_VALUE) VALUES (5, 28);',
+    'INSERT INTO WLEN (WLEN_ID, WLEN_VALUE) VALUES (6, 29);',
+    'INSERT INTO AREA (AREA_ID, AREA_VALUE) VALUES (0, 129);',
+    'INSERT INTO AREA (AREA_ID, AREA_VALUE) VALUES (1, 130);',
+    'INSERT INTO AREA (AREA_ID, AREA_VALUE) VALUES (2, 131);',
+    'INSERT INTO AREA (AREA_ID, AREA_VALUE) VALUES (3, 132);',
+    'INSERT INTO AREA (AREA_ID, AREA_VALUE) VALUES (4, 28);',
+    'INSERT INTO AREA (AREA_ID, AREA_VALUE) VALUES (5, 29);'
+  );
+  strErrorDBInit = 'Ошибка инициализации БД';
   strErrorDBConnect = 'Ошибка соединения с БД';
   strErrorSQLExec = 'Ошибка выполнения SQL : ';
   strErrorDeviceConnect = 'Ошибка подключения к устройству ';
@@ -162,6 +193,8 @@ type
     destructor Destroy;
   end;
 
+procedure InitDB(strDBPath : string);
+
 var
 //  strDatabaseName = 'D:\WORK\Projects\Delphi\snap7\database\dbase.fdb';
   strDatabaseName : string;
@@ -169,6 +202,46 @@ var
   JobResult : integer = 0;
 
 implementation
+
+procedure InitDB(strDBPath : string);
+var
+  DB : TIBDatabase;
+  DBt : TIBTransaction;
+  i : byte;
+begin
+  DB := TIBDatabase.Create(nil);
+  with DB do try
+    Params.Clear;
+    Params.Add('USER ''SYSDBA'' PASSWORD ''masterkey''');
+    Params.Add('PAGE_SIZE = 4096');
+    Params.Add('DEFAULT CHARACTER SET WIN1251');
+    DatabaseName := strDBPath;
+    SQLDialect := 3;
+    LoginPrompt := false;
+    try
+      CreateDataBase;
+      for i := 0 to length(arrDBInitScript) - 1 do begin
+        DBt := TIBTransaction.Create(nil);
+        DefaultTransaction := DBt;
+        Connected := true;
+        DBt.Active := true;
+        with TIBSQL.Create(nil) do try
+          Database := DB;
+          Transaction := DBt;
+          SQL.Text := arrDBInitScript[i];
+          ExecQuery;
+        finally
+          Free;
+        end;
+        DBt.Free;
+      end;
+    except
+      raise Exception.Create(strErrorDBInit + ' ' + strDBPath);
+    end;
+  finally
+    Free;
+  end;
+end;
 
 procedure UpdateQuery(strQuery: string; doCleanup : boolean);
 var

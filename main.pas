@@ -8,6 +8,7 @@ uses
   interval, data, Contnrs, Menus, IniFiles, Buttons, Grids, ValEdit, CommCtrl;
 
 const
+  strMainFormCaption = 'Simatic Monitoring Server';
   strDateTimeFormat = 'dd-mm-yyyy hh:MM:ss';
   strNewDeviceName = 'Новое устройство';
   strNewDeviceAddr = '127.0.0.1';
@@ -23,6 +24,7 @@ const
   strErrLoadConfig = 'Ошибка загрузки конфигурации из файла ';
   strStartDevicePolling = 'Запустить опрос всех блоков данных на ';
   strStopDevicePolling = 'Остановить опрос всех блоков данных на ';
+  strFDBDialogFilter = 'База данных Firebird|*.fdb';
   iLvlDevices = 0;
   iLvlDataBlocks = 1;
   iLvlDetails = 2;
@@ -34,6 +36,7 @@ const
   iBtnImgDelete = 5;
   iBtnImgPause = 6;
   iBtnImgShowData = 7;
+  iBtnImgNewDB = 8;
   iTNodeImgDevice = 0;
   iTNodeImgData = 1;
   iTNodeImgRunning = 2;
@@ -42,6 +45,8 @@ const
   iTNodeImgLocation = 5;
   iTNodeImgStart = 6;
   iTNodeImgAmount = 7;
+  iTNodeImgNewDB = 8;
+  iTNodeImgOpenDB = 9;
 
 type
 
@@ -79,6 +84,10 @@ type
     SpeedButton1: TSpeedButton;
     ValueListEditor1: TValueListEditor;
     SpeedButton2: TSpeedButton;
+    ToolButton8: TToolButton;
+    PopupMenu2: TPopupMenu;
+    N3: TMenuItem;
+    N4: TMenuItem;
     procedure ToolButton1Click(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure TreeView1DblClick(Sender: TObject);
@@ -97,6 +106,9 @@ type
     procedure ToolButton7Click(Sender: TObject);
     procedure SpeedButton1Click(Sender: TObject);
     procedure SpeedButton2Click(Sender: TObject);
+    procedure ToolButton8Click(Sender: TObject);
+    procedure N4Click(Sender: TObject);
+    procedure N3Click(Sender: TObject);
   private
     { Private declarations }
     Devices : array of TSnap7Device;
@@ -290,12 +302,61 @@ begin
   RefreshDeviceTree;
 end;
 
+procedure TForm1.N3Click(Sender: TObject);
+var
+  strDBFileName : String;
+begin
+  with TSaveDialog.Create(Self) do try
+    Filter := strFDBDialogFilter;
+    if Execute then begin
+      strDBFileName := FileName + '.fdb';
+      InitDB(strDBFileName);
+      with TIniFile.Create(ExtractFilePath(Application.ExeName) + strConfigFile) do try
+        WriteString('Database','Path',strDBFileName);
+      finally
+        Free;
+      end; // with TIniFile.Create
+      RefreshDeviceTree;
+      if bDebugMode then DisplayMessage('Создана новая конфигурация в ' + strDBFileName);
+    end;
+  finally
+    Free;
+  end; // with Dialog
+
+end;
+
+procedure TForm1.N4Click(Sender: TObject);
+var
+  strDBFileName : String;
+begin
+  with TOpenDialog.Create(Self) do try
+    Filter := strFDBDialogFilter;
+    if Execute then begin
+      strDBFileName := FileName;
+      with TIniFile.Create(ExtractFilePath(Application.ExeName) + strConfigFile) do try
+        WriteString('Database','Path',strDBFileName);
+      finally
+        Free;
+      end; // with TIniFile.Create
+      RefreshDeviceTree;
+      if bDebugMode then DisplayMessage('Загружена конфигурация из ' + strDBFileName);
+    end; // if Execute
+  finally
+    Free;
+  end; // with Dialog
+end;
+
 procedure TForm1.RefreshDeviceTree;
 var
   i, j : integer;
   tvItem, tvChild, tvDevice : TTreeNode;
 begin
   TreeView1.Items.Clear;
+  with TIniFile.Create(ExtractFilePath(Application.ExeName) + strConfigFile) do try
+    Caption := strMainFormCaption + ' [' + ReadString('Database','Path','') + ']'
+  finally
+    Free;
+  end; // with TIniFile.Create
   with TSnap7WorkArea.Create do try
     SetLength(Devices, EnumDeviceIDs.Count);
     for i := 0 to EnumDeviceIDs.Count - 1 do begin
@@ -484,17 +545,21 @@ end;
 
 procedure TForm1.ToolButton4Click(Sender: TObject);
 begin
-  with TreeView1.Selected do case Level of
+  if TreeView1.Items.Count > 0 then with TreeView1.Selected do case Level of
   iLvlDevices : begin
+    N2.Enabled := true;
     N2.Caption := strAddDataFor + '"' + Text + '"';
   end;
   iLvlDataBlocks : begin
+    N2.Enabled := true;
     N2.Caption := strAddDataFor + '"' + Parent.Text + '"';
   end;
   iLvlDetails : begin
+    N2.Enabled := true;
     N2.Caption := strAddDataFor + '"' + Parent.Parent.Text + '"';
   end;
-  end; // with TreeView1.Selected
+  end // with TreeView1.Selected
+  else N2.Enabled := false;
   PopupMenu1.Popup(Left + ToolButton4.Left, Top + TreeView1.Top);
 end;
 
@@ -568,6 +633,11 @@ begin
     Destroy;
   end;
   Panel2.Show;
+end;
+
+procedure TForm1.ToolButton8Click(Sender: TObject);
+begin
+  PopupMenu2.Popup(Left + ToolButton8.Left, Top + TreeView1.Top);
 end;
 
 procedure TForm1.TrayIcon1Click(Sender: TObject);
